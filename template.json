@@ -1,0 +1,231 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters":
+     {
+        "storageaccountname": {
+           "type": "string",
+           "metadata": {
+                "description": "name of the storage account"
+            }
+        },
+        
+        "virtualnetworkname": {
+           "type": "string",
+           "metadata": {
+                "description": "name of the virtual network"
+            }
+        
+        },
+        "publicipname": {
+           "type": "string",
+           "metadata": {
+                "description": "name of the public ip"
+            }
+        },
+        "windowsvm": {
+           "type": "string",
+           "metadata": {
+                "description": "name of the windows virtual machine"
+            }
+        },
+        "username": {
+           "type": "string",
+           "metadata": {
+                "description": "admin username to login to the vm"
+            }
+        },
+        "azurepassword": {
+           "type": "string",
+           "metadata": {
+                "description": "admin password to login to the vm"
+            }
+        }
+    },
+
+    "functions": [],
+    "variables": {
+        "vnetipaddress": ["10.0.0.0/16"],
+        "subnet1name":"snet01",
+        "subnet2name":"snet02",
+        "snet1ipaddress":"10.0.0.0/24",
+        "snet2ipaddress":"10.0.1.0/24",
+        "tags": {
+            "created_by":"Bhanu",
+            "Department":"IT",
+            "costcentre":"1000"
+
+        },
+        "nicname": "test-nic-01",
+        "nsgname": "test-nsg-01"
+            },
+    "resources": [
+        {
+            "name": "[parameters('storageaccountname')]",
+            "type": "Microsoft.Storage/storageAccounts",
+            "apiVersion": "2015-06-15",
+            "location": "[resourceGroup().location]",
+            "tags": "[variables('tags')]",
+            "properties": {
+                "accountType": "Standard_LRS"
+            }
+        },
+        {
+            "name": "[parameters('virtualnetworkname')]",
+            "type": "Microsoft.Network/virtualNetworks",
+            "apiVersion": "2018-08-01",
+            "location": "[resourceGroup().location]",
+            "tags": "[variables('tags')]",
+            "properties": {
+                "addressSpace": {
+                    "addressPrefixes": "[variables('vnetipaddress')]"                  
+                },
+        
+                "subnets": [
+                    {
+                        "name": "[variables('subnet1name')]",
+                        "properties": {
+                            "addressPrefix": "[variables('snet1ipaddress')]"
+                        }
+                    },
+                    {
+                        "name": "[variables('subnet2name')]",
+                        "properties": {
+                            "addressPrefix": "[variables('snet2ipaddress')]"
+                        }
+                    }
+                        ]
+            }
+            
+        },
+        {
+            "name": "[parameters('publicipname')]",
+            "type": "Microsoft.Network/publicIPAddresses",
+            "apiVersion": "2019-11-01",
+            "location": "[resourceGroup().location]",
+            "tags":"[variables('tags')]",
+            "properties": {
+                "publicIPAllocationMethod": "Dynamic",
+                "dnsSettings": {
+                    "domainNameLabel": "testdns56789"
+                }
+            }
+        },
+                
+        {
+            "name": "[variables('nsgname')]",
+            "type": "Microsoft.Network/networkSecurityGroups",
+            "apiVersion": "2018-08-01",
+            "location": "[resourceGroup().location]",
+            "properties": {
+                "securityRules": [
+                    {
+                        "name": "RDP",
+                        "properties": {
+                            "description": "description",
+                            "protocol": "Tcp",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "3389",
+                            "sourceAddressPrefix": "*",
+                            "destinationAddressPrefix": "*",
+                            "access": "Allow",
+                            "priority": 100,
+                            "direction": "Inbound"
+                        }
+                    },
+                    {
+                        "name": "HTTP",
+                        "properties": {
+                            "description": "description",
+                            "protocol": "Tcp",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "80",
+                            "sourceAddressPrefix": "*",
+                            "destinationAddressPrefix": "*",
+                            "access": "Allow",
+                            "priority": 200,
+                            "direction": "Inbound"
+                        }    }
+                ]
+            }
+        },
+        
+        {
+            "name": "[variables('nicname')]",
+            "type": "Microsoft.Network/networkInterfaces",
+            "apiVersion": "2019-11-01",
+            "location": "[resourceGroup().location]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/publicIPAddresses', parameters('publicipname'))]",
+                "[resourceId('Microsoft.Network/virtualNetworks',parameters('virtualnetworkname'))]",
+                "[resourceId('Microsoft.Network/NetworkSecurityGroups',variables('nsgname'))]"
+            ],
+            "tags": "[variables('tags')]",
+            "properties": {
+                "ipConfigurations": [
+                    {
+                        "name": "ipConfig1",
+                        "properties": {
+                            "privateIPAllocationMethod": "Dynamic",
+                            "publicIPAddress": {
+                                "id": "[resourceId('Microsoft.Network/publicIPAddresses', parameters('publicipname'))]"
+                            },
+                            "subnet": {
+                                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets',parameters('virtualnetworkname'),variables('subnet1name'))]"
+                            },
+                            "networksecuritygroup":{
+                                "id":"[resourceId('Microsoft.Network/networkSecurityGroups',variables('nsgname'))]"
+                        }
+                    }
+                    }
+                ]
+            }
+        },
+        {
+            "name": "[parameters('windowsvm')]",
+            "type": "Microsoft.Compute/virtualMachines",
+            "apiVersion": "2019-07-01",
+            "location": "[resourceGroup().location]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', toLower('windowsVM1storage'))]",
+                "[resourceId('Microsoft.Network/networkInterfaces', 'windowsVM1-NetworkInterface')]"
+            ],
+            "tags": {
+                "displayName": "windowsVM1"
+            },
+            "properties": {
+                "hardwareProfile": {
+                    "vmSize": "Standard_DS1_v2"
+                },
+                "osProfile": {
+                    "computerName": "[parameters('windowsvm')]",
+                    "adminUsername": "[parameters('username')]",
+                    "adminPassword": "[parameters('azurepassword')]"
+                },
+                "storageProfile": {
+                    "imageReference": {
+                        "publisher": "MicrosoftWindowsServer",
+                        "offer": "WindowsServer",
+                        "sku": "2016-Datacenter",
+                        "version": "latest"
+                    },
+                    "osDisk": {
+                        "name": "[concat(parameters('windowsvm'),'-','osdisk')]",
+                        "caching": "ReadWrite",
+                        "createOption": "FromImage"
+                    }
+                },
+                "networkProfile": {
+                    "networkInterfaces": [
+                        {
+                            "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('nicname'))]"
+                        }
+                    ]
+                }
+                
+            }
+        }
+    ],
+    "outputs": {}
+}
+

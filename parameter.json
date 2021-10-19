@@ -1,0 +1,28 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "storageaccountname": {
+        "value": "dssstorageaccount5"
+    },
+    
+
+"virtualnetworkname": {
+    "value": "test-vnet-01"
+},
+"publicipname": {
+    "value": "test-pubip-01"
+},
+"windowsvm": {
+    "value": "test-vm-01"
+},
+"username": {
+    "value": "azureuser"
+},
+"azurepassword": {
+    "value": "password@56789"
+}
+    }
+}
+
+
